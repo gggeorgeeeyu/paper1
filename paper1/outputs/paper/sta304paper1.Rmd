@@ -1,0 +1,222 @@
+---
+title: "Shelters in Toronto Experience High Occupancy Rate With Vastly Different Number of Provision"
+subtitle: "People in Toronto are facing the lack of affordable housing and rising rents."
+author: 
+  - Zhiyue Yu
+thanks: "Code and data are available at: 'https://github.com/gggeorgeeeyu/paper1'."
+date: "`r format(Sys.time(), '%d %B %Y')`"
+abstract: "Shelter usage is one of the most significant factors that measures the livability of a city, as well as the safety of a community. Since more homeless people on the street may lead to more instability to the society. This shelter occupancy data collected in 2020 by Open Data Toronto is used for academic research and analyzing by graphing. We find that generally there is a much higher shelter occupancy in Winter, comparing to that in the rest of the year. Moreover, downtown Toronto has a much heavier demand of shelters than other regions in GTA, such as North York, Scarborough and Etobicoke. Our finding results have implication for shelter construction, real estate market and the livability of Great Toronto Area."
+output:
+  bookdown::pdf_document2
+toc: FALSE
+bibliography: references.bib
+---
+```{r, include=FALSE, echo=TRUE}
+install.packages("tidyverse")
+install.packages("opendatatoronto")
+install.packages("usethis")
+install.packages("knitr")
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r, include=FALSE}
+library(opendatatoronto)
+library(dplyr)
+
+# get package
+package <- show_package("8a6eceb2-821b-4961-a29d-758f3087732d")
+package
+
+# get all resources for this package
+resources <- list_package_resources("8a6eceb2-821b-4961-a29d-758f3087732d")
+
+# identify datastore resources; by default, Toronto Open Data sets datastore resource format to CSV for non-geospatial and GeoJSON for geospatial resources
+datastore_resources <- filter(resources, tolower(format) %in% c('csv', 'geojson'))
+
+# load the first datastore resource as a sample
+data <- filter(datastore_resources, row_number()==1) %>% get_resource()
+data
+```
+
+```{r, include=FALSE}
+#save data
+write_csv(data, "inputs/data/year2020_shelter_usage.csv")
+```
+
+
+# Introduction
+
+Shelter usage is one of the most significant factors that measures the livability of a city, as well as the safety of a community. Due to the reason that more homeless people on the street may lead to more instability to the society. According to the National Alliance to End Homelessness, written in the article "Emergency Shelters Are Serving an Increasingly Vulnerable Population", "they provide an immediate place to stay while people reconnect with housing."(National Alliance to End Homelessness, 2018) Shelter is not only for people who are homeless, it is also a bridge that connects and helps people transit when having difficulty in housing.
+
+This Daily Shelter Occupancy data(Open Data Dataset 2020) collected in 2020 by Open Data Toronto is used for academic research and analyzing by graphing. The data set provides detailed daily information of each shelter providing the programs in Toronto, North York, Scarborough and Etobicoke. It also describes the types of rooms shelters provide, including male, female, co-ed, families and youth, shown in Figure \@ref(fig:rooms), as well as the daily occupancy and capacity of the shelter. 
+
+We find that generally there is a much higher shelter occupancy in Winter, comparing to that in the rest of the year. Moreover, downtown Toronto has a much heavier demand of shelters than other regions in GTA, such as North York, Scarborough and Etobicoke. This means the livability in downtown Toronto is much lower than other areas in GTA, since the cost of life is significantly higher. The City said it's investing another 297.4 million dollars in homelessness and housing solutions in 2020, compared to 365.8 million dollars spent in 2019(Rocca, 2021), although there is still a large gap in the needs.
+Our finding results will have implication for shelter construction, real estate market and the livability of Great Toronto Area. We will provide people with clearer insights of housing and living suggestions in GTA area.
+
+
+# Data
+
+
+```{r, include=FALSE, echo=FALSE}
+#Find the distinct cities that provide the shelter service
+distinct(data, data$SHELTER_CITY)
+```
+
+```{r, include=FALSE, echo=FALSE}
+#Add a column that calculates the occupancy rate for each shelter each day
+data <- data %>% mutate(OCCUPANCY_RATE = round(OCCUPANCY/CAPACITY, 3))
+#remove the rows that has 0 capacity rate and the occupancy rate is NaN
+data <- data[!data$CAPACITY == 0,]
+
+#form a new data frame that only contains the data we want
+new_data <- data %>% select(c(OCCUPANCY_DATE, SHELTER_CITY, SECTOR, OCCUPANCY, CAPACITY, OCCUPANCY_RATE))
+
+```
+
+```{r, include=FALSE, echo=FALSE}
+#Find the shelter occupancy rate and group by date and cities
+new_data_total <- new_data %>% 
+  group_by(OCCUPANCY_DATE, SHELTER_CITY) %>%
+  summarise(OCCUPANCY = sum(OCCUPANCY), CAPACITY = sum(CAPACITY), OCCUPANCY_RATE = round(OCCUPANCY/CAPACITY, 3))
+```
+
+To better understand the occupancy condition of shelters in Toronto, North York, Scarborough and Etobicoke, we utilized the Daily Shelter Occupancy(Open Data Dataset, 2020)  from the Toronto Open Data
+portal(City of Toronto, 2022). The raw data includes 41061 observations, describing a daily condition of every shelter providing the program service in 4 regions in Greater Toronto Area in 2020. It also contains the basic information of each shelter, including their locations, type of rooms they provide and the capacity and daily occupancy. Using R (R Core Team 2021), tidyverse (Wickham et al., 2019), opendatatoronto (Gelfand, 2020) and dplyr (Wickham et al., 2021), I cleaned and extracted data I need to start my analysis.
+
+To begin my data cleaning, I first need to what are the cities that occured in the data set, so I output the distinct names of the cities. After that, I extracted the column I need for the analysis, which are OCCUPANCY_DATE, SHELTER_CITY, SECTOR, OCCUPANCY, CAPACITY. To make the result more obvious, I calculated the OCCUPANCY_RATE and formed a new column, which is OCCUPANCY over CAPACITY. This metric shows the exact needs of shelter mainly to homeless people. I then use knitr(Xie, 2021) to generate a general table that includes the occupancy, capacity and occupancy rate of each shelter, group by date and cities. The table below shows the first six rows of the whole table(table \@ref(tab:table1)).
+
+After checking th general information of each shelter, we want to see exaclty how many people need shelter for each city. I then calculated the sum of occupancy, capacity and average occupancy rate for each city(table \@ref(tab:table2)).
+
+From table \@ref(tab:table2), we can see that downtown Toronto has the largest demand of shelter, which is 1630090 requests through the year 2020, covering almost half of the needs. We can also see that even though North York only have 16091 requests over the year 2020, it has the highest occupancy rate, which is 0.871. This means the government provides less sufficient of shelters for homeless people in North York than that in downtown Toronto, but they all cover the needs.
+
+To figure out the democraphic of the homeless people that registered for shelters, we use ggplot2(Wickham, 2016) to draw the boxplot(Figure \@ref(fig:rooms)).
+
+From the graph, we can find that homeless people are more likely to be single men and women. However, in terms of shelter construction, both North York and Etobicoke only have shelterS for youth, Scarborough does not have shelterS for families and youth. This leads to the bias section we will discuss next(Section \@ref(Bias)).
+
+```{r table1, echo=FALSE}
+library(knitr)
+head1 <- head(new_data_total)
+head1 %>%
+  kable(
+    caption = "The first 6 rows of occupancy, capacity and occupancy rate, group by date and cities",
+    digits = 3,
+    booktabs = TRUE, 
+    linesep = ""
+  )
+```
+
+```{r, include=FALSE, echo=FALSE}
+#Show the sum of Occupancy and Capacity, group by city, order by the occupancy rate
+new_data_sum <- new_data %>% 
+  group_by(SHELTER_CITY) %>%
+  summarise(OCCUPANCY = sum(OCCUPANCY), CAPACITY = sum(CAPACITY), OCCUPANCY_RATE = round(OCCUPANCY/CAPACITY, 3)) %>%
+  arrange(desc(OCCUPANCY_RATE))
+```
+
+```{r table2, echo=FALSE}
+library(knitr)
+new_data_sum %>%
+  kable(
+    caption = "Sum of the occupancy and capacity, average of the occupancy rate, group by cities",
+    digits = 3,
+    booktabs = TRUE, 
+    linesep = ""
+  )
+```
+
+```{r rooms, fig.cap="The Total Number of Different Shelter Types Provided By The Government Of Ontario", echo=FALSE}
+#Show the Total Number of Different Shelter Types Provided By The Government Of Ontario
+data %>%  
+  ggplot(mapping = aes(x = SECTOR, fill = SHELTER_CITY )) + 
+  geom_bar() + 
+  theme_minimal()+
+  labs(x = "Shelter Room Catagories",
+    y = "Number of Shelter Room Types",
+    title = "Number of Different Shelter Type",
+    subtitle = "The Total Number of Different Shelter Types Provided By The Government Of Ontario")+
+  theme(legend.position = "bottom") #move the legend to the bottom
+```
+
+\newpage
+
+# Results
+
+Result shows that although the government has already done a lot in helping homeless people get the shelter and find a place to live, there is still a large gap between the demand and supply, due to the fact that many of the regions do not provide proper shelter for the proper people. 
+
+We also finds that downtown Toronto has a much larger requirements for the shelter than other areas, it could be the reason that downtown has a larger population density, thus downtown is more convinient for people's daily life and homeless people are more likely to stay in downtown to make a relatively easier life.
+
+
+# Discussion
+
+Now that we have learned the basic information of the shelters and the demographics of the homeless people in needs. We still have no idea what is the distribution of the needs throughout the year. Therefore, I used ggplot2(Wickham, 2016) to graph the daily occupation rate of the shelters in different regions in year 2020(Figure \@ref(fig:totaldis)). 
+
+In general, we can find that in winter shelters have larger demands than the rest of year in all of the four regions. However, the demand of the four regions varies in the rest of the year, we will discuss this reperately.
+
+
+```{r totaldis, fig.cap="Shelter Occupation Condition By City", echo=FALSE}
+#Draw the Daily Occupancy Rate and Group by City Shelters
+new_data_total %>%
+ggplot(mapping = aes(x = OCCUPANCY_DATE , y = OCCUPANCY_RATE, color = SHELTER_CITY)) +
+  geom_point() +
+  theme_classic()+
+  labs(x = "Year 2020 From January to December",
+    y = "Daily Occupation Rate",
+    title = "Shelter Occupation Condition By City") +
+  theme(legend.position = "bottom", #move the legend to the bottom
+        axis.text.x = element_blank(), #remove the text of x-axis
+        axis.ticks.x = element_blank()) #remove the scale of x-axis
+```
+
+## Toronto
+
+In Toronto, we find that the demand for shelter is relatively high in winter with the rate of around 0.95, but not reaching 1, which means there is sufficient spaces for homeless people, even though the total number of demands is extremely high. For the rest of the year, it is stable with the rate of around 0.5. This is a good sign that there won't be a gap between demand and supply, thus leads to social uncertainty and safety concerns.
+
+## North York and Scarborough
+
+In North York, there is a huge drop in the middle of the year, which is on around March and April. This may due to COVID-19, since pandamic hit the city all of a sudden, all the facilities are closed at that time and thus not much registration records for that period of time. This will lead to an unclear statistic of the number of homeless people needs.
+
+## Etobicoke
+
+In Etobicoke, the drop on March and April is not that obvious, but there is still a gap between the days. This may due to the reopen of shelters and the short term requirements is slightly higher than the normal, and then it goes back to normal slightly, which is then similar to the occupancy rate in Toronto. However, the provision of shelters in Etobicoke is not sufficient as downtown Toronto do, so the total needs is still underestimated throughout the year.
+
+## Bias
+
+We have seen in the graph \@ref(fig:rooms), North York, Etobicoke do not have a comprehensive shelter program for all types of homeless people, the number of needs is highly underestimated, because based on the existing data, we can find that it is most likely that single homeless men and women are the largest group of people that requires shelter. Nevertheless, North York and Etobicoke do not provide shelter for them, thus the data set is not complete. The data set exists bias in it.
+
+# Conclusion
+
+Although the government has done a lot in helping homeless people and digitalize the whole system, there are still number of needs underestimated due to incomplete statistics and provision. In relatively rural areas, the number and the type shelters are not provided as need, for example, shelters for failies are only established in downtown Toronto, while North York and Etobicoke only provide shelter for youth, but we find that single men and women have the largest amount of needs based on Toronto data.
+
+To make improvement, government should estalish more shelters for various types of homeless people. Moreover, policies should be applied to the real estate market to relief the stress coming from the lack of afforable housing and rising rents. 
+
+Due to the total amount of homeless people in different regions, people may think of moving to relatively rural areas, considering safety and socail instability, even though life could be less convenient.
+
+
+\newpage
+
+
+# References
+
+“City of Toronto Spent Nearly $2M to Clear 3 Homeless Encampments, Repair Parks - Toronto | Globalnews.Ca.” Global News, https://globalnews.ca/news/8199534/city-of-toronto-homeless-encampment-clearing-costs/. Accessed 6 Feb. 2022.
+
+Create Elegant Data Visualisations Using the Grammar of Graphics. https://ggplot2.tidyverse.org/. Accessed 7 Feb. 2022.
+
+“Emergency Shelters Are Serving an Increasingly Vulnerable Population.” National Alliance to End Homelessness, https://endhomelessness.org/resource/emergency-shelters-serving-increasingly-vulnerable-population/. Accessed 6 Feb. 2022.
+
+Gelfand, Sharla, and City of Toronto. Opendatatoronto: Access the City of Toronto Open Data Portal. 0.1.4, 2020. R-Packages, https://CRAN.R-project.org/package=opendatatoronto.
+
+Homepage. https://open.toronto.ca/. Accessed 6 Feb. 2022.
+
+Knitr - Yihui Xie. https://yihui.org/knitr/. Accessed 7 Feb. 2022.
+
+Open Data Dataset. https://open.toronto.ca/dataset/. Accessed 6 Feb. 2022.
+
+R: The R Project for Statistical Computing. https://www.r-project.org/. Accessed 6 Feb. 2022.
+
+Wickham, Hadley, Romain François, et al. Dplyr: A Grammar of Data Manipulation. 1.0.7, 2021. R-Packages, https://CRAN.R-project.org/package=dplyr.
+
+Wickham, Hadley, Mara Averick, et al. “Welcome to the Tidyverse.” Journal of Open Source Software, vol. 4, no. 43, Nov. 2019, p. 1686. DOI.org (Crossref), https://doi.org/10.21105/joss.01686.
